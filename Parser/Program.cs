@@ -61,45 +61,134 @@ namespace Parser
 
                 var list2 = document.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("clearfix vif_wrapper")).ToList();
 
-                //var testList = document.ChildNodes.Where(item => item.NodeName == "blue_bg full_width_bg vif_blue_box");
-                //foreach(var t in testList)
+                Plane plane = new Plane();
+
+                string planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > h1";
+
+                var planeNameQuery = document.QuerySelector(planeStrQuery);
+
+                if (planeNameQuery == null)
+                {
+                    planeStrQuery = planeStrQuery.Replace("fa_right_panel ", "fa_right_panel new_vif");
+                    planeNameQuery = document.QuerySelector(planeStrQuery);
+                }               
+
+                if(planeNameQuery == null)
+                    Console.WriteLine("Uncatched error! Can`t get column \"right panel\"");
+                    
+                plane.Name = planeNameQuery.TextContent;
+                Console.WriteLine("Plane name - " + plane.Name);
+
+                planeStrQuery = planeStrQuery.Replace("h1", "div[class=\"vif_price\"]");
+                var planePriceQuery = document.QuerySelector(planeStrQuery);
+
+                if (planePriceQuery == null)
+                {
+                    planeStrQuery = planeStrQuery.Replace("vif_price", "new_price");
+                    planePriceQuery = document.QuerySelector(planeStrQuery);
+                }
+
+                if (planePriceQuery == null)
+                    Console.WriteLine("Uncatched error! Can`t get column \"right panel\"");
+
+                plane.Price = GetPrice(planePriceQuery.TextContent);
+                plane.Currency = GetCurrency(planePriceQuery.TextContent);
+                Console.WriteLine("Plane price - " + plane.Price + ' ' + plane.Currency);
+
+                planeStrQuery = planeStrQuery.Remove(planeStrQuery.Length - 24, 24);
+                planeStrQuery = planeStrQuery + " > ul[class=\"mp0\"] > li[class=\"clearfix\"]";
+
+                //var mainInfo = document.QuerySelectorAll(planeStrQuery).ToList();
+                //foreach(var mi in mainInfo)
                 //{
-                //    Console.WriteLine($"Node name - " + t.NodeName + "\tNode type - " + t.NodeType + "\tNode Value - " + t.NodeValue
-                //                        + "\nNode parent name - " + t.Parent.NodeName + "\tNode parent class name - " + t.ParentElement.ClassName);
-                //}
-                //var listTest = document.QuerySelectorAll($"body > section > div.conteiner").ToList();
-                //var listTest = document.QuerySelectorAll($"body > section > div.conteiner > div.clearfix" + ' ' + "vif_wrapper > " +
-                //                                        "div.fa_right_panel" + ' ' + "new_vif > div.vif_other_info > h1").ToList();
-                //foreach (var lt in listTest)
-                //{
-                //    Console.WriteLine(lt.TextContent);
+                //    var liName = mi.QuerySelector("div[class=\"col_30\"]").TextContent;
+                //    string value = "div[class=\"col_63\"]";
+
+                //    if (liName == "YEAR")
+                //        //Fucking symbol "‐", copy from debug window, becouse it isn`t equals "-" O_o (i think, diggerent encoding)
+                //        plane.Year = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent;
+                //    if (liName == "LOCATION")
+                //    {
+                //        var a = mi.QuerySelector(value).TextContent;
+                //        plane.Location = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent.Trim(' ', '\n', '\t');
+                //        var b = plane.Location;
+                //    }
+                //    if (liName == "S/N")
+                //        plane.SerialNumber = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent;
+                //    if (liName == "REG")
+                //        plane.Redistration = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent;
+                //    if (liName == "TTAF")
+                //        plane.TotlaTimeAirFrame = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent;
                 //}
 
-                Plane plane = new Plane();
-                foreach(var l in list2)
+                //Console.WriteLine($"\tYear: " + plane.Year + "\n\tLocation: " + plane.Location + "\n\tS/N: " + plane.SerialNumber +
+                //    "\n\tREG: " + plane.Redistration + "\n\tTTAF: " + plane.TotlaTimeAirFrame);
+
+                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[class=\"clearfix\"] > " +
+                    $"div[class=\"product_info_col1\"] > div[class=\"disc\"] > p";
+
+                var planeDiscriptionQuery = document.QuerySelectorAll(planeStrQuery).ToList();
+
+                if(planeDiscriptionQuery.Count() == 0)
                 {
-                    var nameH1 = l.QuerySelectorAll("h1").ToList();
-                    foreach (var h in nameH1)
-                    {
-                        plane.Name = h.TextContent;
-                        Console.WriteLine("Name: " + h.TextContent);
-                    }
-                    var price = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("vif_price")).ToList();
-                    if (price.Count != 0)
-                    {
-                        plane.Price = GetPrice(price[0].TextContent);
-                        plane.Currency = GetCurrency(price[0].TextContent);
-                        Console.WriteLine("Price: " + plane.Price + "Currency: " + plane.Currency);
-                    }
-                    //var year = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("col_63") && item.Parent.NodeName == "li" && item.ParentElement.ClassName.Contains("clearfix")).ToList();
-                    var year = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("col_63")).ToList();
-                    
-                    foreach (var y in year)
-                    {
-                        Console.WriteLine("Parent name: " + y.Parent.NodeName + "\tParent classname: " + y.ParentElement.ClassName);
-                        //Console.WriteLine("Year: " + y.TextContent);
-                    }
+                    planeStrQuery = planeStrQuery.Replace("fa_left_panel ", "fa_left_panel new_vif");
+                    planeDiscriptionQuery = document.QuerySelectorAll(planeStrQuery).ToList();
                 }
+
+                if (planeDiscriptionQuery.Count() == 0)
+                    Console.WriteLine("Uncatched error! Can`t get discription");
+
+                foreach(var pdq in planeDiscriptionQuery)
+                {
+                    //for (int i = 0; i < pdq.TextContent.Length; i++)
+                    //{
+                    //    if (i != pdq.TextContent.Length && pdq.TextContent[i] == '"' && pdq.TextContent[i + 1] == '"')
+                    //        plane.Discription += pdq.TextContent[i] + '\n';
+                    //    else
+                    //        plane.Discription += pdq.TextContent[i];
+                    //}
+                    if(planeDiscriptionQuery.Count() < 2)
+                    {
+                        var findBr = pdq.QuerySelectorAll("br").ToList();
+                        foreach(var b in findBr)
+                        {
+                            var t = b.TagName;
+                        }
+                    }
+                    //var b = pdq.TagName;
+                    plane.Discription += pdq.TextContent.Trim(' ', '\t') + '\n';
+                }
+
+                Console.WriteLine("Discription: " + plane.Discription);
+
+                //Console.WriteLine("Current query - " + planeStrQuery);
+
+                //foreach(var l in list2)
+                //{
+                //    var nameH1 = l.QuerySelectorAll("h1").ToList();
+                //    foreach (var h in nameH1)
+                //    {
+                //        plane.Name = h.TextContent;
+                //        Console.WriteLine("Name: " + h.TextContent);
+                //    }
+                //    var price = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("vif_price")).ToList();
+                //    if (price.Count != 0)
+                //    {
+                //        plane.Price = GetPrice(price[0].TextContent);
+                //        plane.Currency = GetCurrency(price[0].TextContent);
+                //        Console.WriteLine("Price: " + plane.Price + "Currency: " + plane.Currency);
+                //    }
+                //    //var year = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("col_63") && item.Parent.NodeName == "li" && item.ParentElement.ClassName.Contains("clearfix")).ToList();
+                //    var year = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("col_63")).ToList();
+
+                //    foreach (var y in year)
+                //    {
+                //        Console.WriteLine("Parent name: " + y.Parent.NodeName + "\tParent classname: " + y.ParentElement.ClassName);
+                //        //Console.WriteLine("Year: " + y.TextContent);
+                //    }
+                //}
 
             }
 

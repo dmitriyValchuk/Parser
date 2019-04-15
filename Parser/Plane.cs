@@ -11,5 +11,12 @@ namespace Parser
         public string Name { get; set; }
         public string Price { get; set; }
         public string Currency { get; set; }
+        public string Year { get; set; }
+        public string Location { get; set; }
+        public string SerialNumber { get; set; }
+        public string Redistration { get; set; }
+        public string TotlaTimeAirFrame { get; set; }
+
+        public string Discription { get; set; }
     }
 }
