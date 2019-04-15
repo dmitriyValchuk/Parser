@@ -33,32 +33,20 @@ namespace Parser
             var domParser = new HtmlParser();
             var newDocument = domParser.ParseDocument(output);
 
-            var list = newDocument.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("listing")).ToList();
+            var listAllAirplanes = newDocument.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("listing")).ToList();
             List<string> urls = new List<string>();
 
-            foreach (var l in list)
+            var listTest = newDocument.QuerySelector("body > div[class=\"cookies_content clearfix cookie_tab hide\"] > div[class=\"container\"] > div[class=\"fl cookies_text\"]");
+            Console.WriteLine(listTest.TextContent);
+
+            foreach (var l in listAllAirplanes)
             {
-                var childDiv = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("list_col2")).ToList();
-                foreach (var c in childDiv)
+                var listAirplanesUrls = l.QuerySelectorAll($"div[class=\"list_col2\"] > div[class=\"clearfix\"] > div[class=\"share_link\"] > " +
+                                            $"a[class=\"btn_more\"]");
+                foreach(var tl in listAirplanesUrls)
                 {
-                    var childUl = c.QuerySelectorAll("ul").Where(item => item.ClassName != null && item.ClassName.Contains("mp0 clearfix")).ToList();
-                    foreach (var cu in childUl)
-                    {
-                        var childDiv2 = cu.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("clearfix")).ToList();
-                        foreach (var c2 in childDiv2)
-                        {
-                            var childDivName = c2.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("prod_name")).ToList();
-                            foreach (var cdn in childDivName)
-                            {
-                                var hrefs = cdn.QuerySelectorAll("a").OfType<IHtmlAnchorElement>();
-                                foreach (var h in hrefs)
-                                {
-                                    urls.Add("https://www.avbuyer.com"+h.GetAttribute("href"));
-                                    Console.WriteLine(h.GetAttribute("href"));
-                                }
-                            }
-                        }
-                    }
+                    urls.Add("https://www.avbuyer.com" + tl.GetAttribute("href"));
+                    Console.WriteLine(tl.GetAttribute("href"));
                 }
             }
 
@@ -73,13 +61,19 @@ namespace Parser
 
                 var list2 = document.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("clearfix vif_wrapper")).ToList();
 
-                var listTest = document.QuerySelectorAll($"body > section > div.conteiner").ToList();
+                //var testList = document.ChildNodes.Where(item => item.NodeName == "blue_bg full_width_bg vif_blue_box");
+                //foreach(var t in testList)
+                //{
+                //    Console.WriteLine($"Node name - " + t.NodeName + "\tNode type - " + t.NodeType + "\tNode Value - " + t.NodeValue
+                //                        + "\nNode parent name - " + t.Parent.NodeName + "\tNode parent class name - " + t.ParentElement.ClassName);
+                //}
+                //var listTest = document.QuerySelectorAll($"body > section > div.conteiner").ToList();
                 //var listTest = document.QuerySelectorAll($"body > section > div.conteiner > div.clearfix" + ' ' + "vif_wrapper > " +
                 //                                        "div.fa_right_panel" + ' ' + "new_vif > div.vif_other_info > h1").ToList();
-                foreach (var lt in listTest)
-                {
-                    Console.WriteLine(lt.TextContent);
-                }
+                //foreach (var lt in listTest)
+                //{
+                //    Console.WriteLine(lt.TextContent);
+                //}
 
                 Plane plane = new Plane();
                 foreach(var l in list2)
@@ -96,6 +90,14 @@ namespace Parser
                         plane.Price = GetPrice(price[0].TextContent);
                         plane.Currency = GetCurrency(price[0].TextContent);
                         Console.WriteLine("Price: " + plane.Price + "Currency: " + plane.Currency);
+                    }
+                    //var year = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("col_63") && item.Parent.NodeName == "li" && item.ParentElement.ClassName.Contains("clearfix")).ToList();
+                    var year = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("col_63")).ToList();
+                    
+                    foreach (var y in year)
+                    {
+                        Console.WriteLine("Parent name: " + y.Parent.NodeName + "\tParent classname: " + y.ParentElement.ClassName);
+                        //Console.WriteLine("Year: " + y.TextContent);
                     }
                 }
 
@@ -115,6 +117,11 @@ namespace Parser
                 if (tempStr == '£'.ToString() && str.Contains(tempStr))
                 {
                     tempStr = "GBP";
+                    return tempStr;
+                }
+                else if(tempStr == '€'.ToString() && str.Contains(tempStr))
+                {
+                    tempStr = "EUR";
                     return tempStr;
                 }
                 if (str.Contains(c))
