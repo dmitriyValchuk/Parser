@@ -1,4 +1,5 @@
 ﻿using AngleSharp;
+using AngleSharp.Css;
 using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
@@ -56,6 +57,7 @@ namespace Parser
             foreach(var el in urls)
             {
                 var stream = GetPage(el).ReadToEnd();
+                //var config = 
                 var Parser = new HtmlParser();
                 var document = Parser.ParseDocument(stream);
 
@@ -75,7 +77,7 @@ namespace Parser
                 }               
 
                 if(planeNameQuery == null)
-                    Console.WriteLine("Uncatched error! Can`t get column \"right panel\"");
+                    ShowError("Uncatched error! Can`t get column \"right panel\"");
                     
                 plane.Name = planeNameQuery.TextContent;
                 Console.WriteLine("Plane name - " + plane.Name);
@@ -90,7 +92,7 @@ namespace Parser
                 }
 
                 if (planePriceQuery == null)
-                    Console.WriteLine("Uncatched error! Can`t get column \"right panel\"");
+                    ShowError("Uncatched error! Can`t get column \"right panel\"");
 
                 plane.Price = GetPrice(planePriceQuery.TextContent);
                 plane.Currency = GetCurrency(planePriceQuery.TextContent);
@@ -138,7 +140,7 @@ namespace Parser
                 }
 
                 if (planeDiscriptionQuery.Count() == 0)
-                    Console.WriteLine("Uncatched error! Can`t get discription");
+                    ShowError("Uncatched error! Can`t get discription");
 
                 foreach(var pdq in planeDiscriptionQuery)
                 {
@@ -149,50 +151,86 @@ namespace Parser
                     //    else
                     //        plane.Discription += pdq.TextContent[i];
                     //}
-                    if(planeDiscriptionQuery.Count() < 2)
-                    {
-                        var findBr = pdq.QuerySelectorAll("br").ToList();
-                        foreach(var b in findBr)
-                        {
-                            var t = b.TagName;
-                        }
-                    }
+                    //if(planeDiscriptionQuery.Count() < 2)
+                    //{
+                    //    var findBr = pdq.QuerySelectorAll("br").ToList();
+                    //    foreach(var b in findBr)
+                    //    {
+                    //        var t = b.TagName;
+                    //    }
+                    //}
                     //var b = pdq.TagName;
                     plane.Discription += pdq.TextContent.Trim(' ', '\t') + '\n';
                 }
 
                 Console.WriteLine("Discription: " + plane.Discription);
 
-                //Console.WriteLine("Current query - " + planeStrQuery);
+                //planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                //    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
+                //    $"div[class=\"panel_default\"] > div[class=\"panel_title\"] > h4 > a";
 
-                //foreach(var l in list2)
+                //var planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
+
+                //if (planeSpecificationsQuery.Count() == 0)
                 //{
-                //    var nameH1 = l.QuerySelectorAll("h1").ToList();
-                //    foreach (var h in nameH1)
-                //    {
-                //        plane.Name = h.TextContent;
-                //        Console.WriteLine("Name: " + h.TextContent);
-                //    }
-                //    var price = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("vif_price")).ToList();
-                //    if (price.Count != 0)
-                //    {
-                //        plane.Price = GetPrice(price[0].TextContent);
-                //        plane.Currency = GetCurrency(price[0].TextContent);
-                //        Console.WriteLine("Price: " + plane.Price + "Currency: " + plane.Currency);
-                //    }
-                //    //var year = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("col_63") && item.Parent.NodeName == "li" && item.ParentElement.ClassName.Contains("clearfix")).ToList();
-                //    var year = l.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("col_63")).ToList();
-
-                //    foreach (var y in year)
-                //    {
-                //        Console.WriteLine("Parent name: " + y.Parent.NodeName + "\tParent classname: " + y.ParentElement.ClassName);
-                //        //Console.WriteLine("Year: " + y.TextContent);
-                //    }
+                //    planeStrQuery = planeStrQuery.Replace("fa_left_panel ", "fa_left_panel new_vif");
+                //    planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
                 //}
 
+                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
+                    $"div[class=\"panel_default\"]";
+
+                var tempStr = "> div[class=\"panel_title\"] > h4 > a";
+
+                var planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
+
+                if (planeSpecificationsQuery.Count() == 0)
+                {
+                    planeStrQuery = planeStrQuery.Replace("fa_left_panel ", "fa_left_panel new_vif");
+                    planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
+                }
+
+                plane.specifications = new List<Specification>();
+                foreach(var psq in planeSpecificationsQuery)
+                {
+
+                    var planeSpeclTitleQuery = psq.QuerySelector("> div[class=\"panel_title\"] > h4 > a");
+                    Specification specification = new Specification();                    
+                    specification.Title = planeSpeclTitleQuery.TextContent;
+
+                    var planeSpecValueQuery = psq.QuerySelector(" > div[class=\"panel_contain\"]");
+                    specification.Value = planeSpecValueQuery.TextContent.Trim(' ', '\n', '\t');
+
+                    //specification.specificationSeeds = new List<SpecificationSeed>();
+                    //foreach(var pstavq in planeSpecTitleAndValueQuery)
+                    //{
+                    //    SpecificationSeed specificationSeed = new SpecificationSeed();
+                    //    //var planeSpecTitleQuery = pstavq.QuerySelector("h3");
+                    //    //specificationSeed.Title = planeSpecTitleQuery.TextContent;
+                    //    specificationSeed.Value = pstavq.TextContent;                        
+
+                    //    specification.specificationSeeds.Add(specificationSeed);
+                    //    Console.WriteLine("\tSpecification Seed: " + specificationSeed.Value);
+                    //    //Console.WriteLine("Specification Seed Title: " + specificationSeed.Title + "\tValue: " + specificationSeed.Value);
+                    //}
+
+                    plane.specifications.Add(specification);
+                    Console.WriteLine("Specification: " + specification.Title + "\nValue: " + specification.Value);
+                }
+                
+
+               
             }
 
             Console.ReadLine();
+        }
+
+        static public void ShowError(string err)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(err);
+            Console.ResetColor();
         }
 
         static public string GetCurrency(string str)
