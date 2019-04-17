@@ -181,8 +181,6 @@ namespace Parser
                     $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
                     $"div[class=\"panel_default\"]";
 
-                var tempStr = "> div[class=\"panel_title\"] > h4 > a";
-
                 var planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
 
                 if (planeSpecificationsQuery.Count() == 0)
@@ -216,11 +214,30 @@ namespace Parser
                     //}
 
                     plane.specifications.Add(specification);
-                    Console.WriteLine("Specification: " + specification.Title + "\nValue: " + specification.Value);
+                    Console.WriteLine("Specification: " + specification.Title + "\nValue: " + specification.Value);                    
                 }
-                
 
-               
+                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_right_panel \"] > div[class=\"seller_info\"] > div[class=\"seller_name\"]";
+
+                var planeSellerNameQuery = document.QuerySelector(planeStrQuery);
+
+                if (planeSellerNameQuery == null)
+                    ShowError("This plane order hasn`t seller contscts");
+
+                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                $"div[class=\"fa_right_panel \"] > div[class=\"contact_slide\"] > span";
+
+                var planeSellerPhoneQuery = document.QuerySelector(planeStrQuery);
+
+                if (planeSellerPhoneQuery == null)
+                    ShowError("Can`t get seller phone");
+
+                Seller seller = new Seller();
+                seller.Name = planeSellerNameQuery.TextContent;
+                seller.Phone = planeSellerPhoneQuery.TextContent;
+                Console.WriteLine("Seller Name: " + seller.Name + "\tSeller phone: " + seller.Phone);
+
             }
 
             Console.ReadLine();

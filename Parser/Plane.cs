@@ -19,5 +19,7 @@ namespace Parser
 
         public string Discription { get; set; }
         public List<Specification> specifications { get; set; }
+
+        public Seller Seller { get; set; }
     }
 }
