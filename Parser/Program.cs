@@ -8,10 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace Parser
 {
@@ -56,9 +53,6 @@ namespace Parser
                 string currentUrl = url + "?page=" + i;
 
                 var document = GetDocument(currentUrl);
-                //var output = GetPage(currentUrl).ReadToEnd();
-                //var domParser = new HtmlParser();
-                //var document = domParser.ParseDocument(output);
 
                 Console.WriteLine("Urls for page #" + i);
 
@@ -90,7 +84,23 @@ namespace Parser
             }
 
             if (query == null)
-                ShowError("Uncatched error! Can`t get column \"right panel\"");
+                ShowError("Uncatched error! Can`t get data");
+
+            return query;
+        }
+
+        static List<IElement> GetMultiData(string queryStr, IHtmlDocument document)
+        {
+            var query = document.QuerySelectorAll(queryStr).ToList();
+
+            if (query.Count() == 0)
+            {
+                queryStr = queryStr.Replace("fa_left_panel ", "fa_left_panel new_vif");
+                query = document.QuerySelectorAll(queryStr).ToList();
+            }
+
+            if (query.Count() == 0)
+                ShowError("Uncatched error! Can`t get data");
 
             return query;
         }
@@ -116,6 +126,56 @@ namespace Parser
                 plane.Currency = GetCurrency(GetSingleData(planePriceStrQuery, document).TextContent);
                 Console.WriteLine("Plane price - " + plane.Price + ' ' + plane.Currency);
 
+                var planeDiscriptionStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[class=\"clearfix\"] > " +
+                    $"div[class=\"product_info_col1\"] > div[class=\"disc\"] > p";
+
+                var discriptionList = GetMultiData(planeDiscriptionStrQuery, document);
+
+                foreach (var dl in discriptionList)
+                    plane.Discription += dl.TextContent.Trim(' ', '\t') + '\n';
+                Console.WriteLine("Discription: " + plane.Discription);
+
+                var planeSpecificationStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
+                    $"div[class=\"panel_default\"]";
+
+                var specificationsList = GetMultiData(planeSpecificationStrQuery, document);
+
+                plane.specifications = new List<Specification>();
+                foreach (var sl in specificationsList)
+                {
+                    Specification specification = new Specification();
+                    var planeSpcificationTitleStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
+                    $"div[class=\"panel_default\"] > div[class=\"panel_title\"] > h4 > a";
+                  
+                    specification.Title = GetSingleData(planeSpcificationTitleStrQuery, document).TextContent;
+
+                    var planeSpecificationValueStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
+                    $"div[class=\"panel_default\"] > div[class=\"panel_contain\"]";
+
+                    specification.Value = GetSingleData(planeSpecificationValueStrQuery, document).TextContent.Trim(' ', '\n', '\t');
+
+                    plane.specifications.Add(specification);
+                    Console.WriteLine("Specification: " + specification.Title + "\nValue: " + specification.Value);
+                }
+
+                Seller seller = new Seller();
+                
+                var planeSellerNameStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                   $"div[class=\"fa_right_panel \"] > div[class=\"seller_info\"] > div[class=\"seller_name\"]";
+
+                seller.Name = GetSingleData(planeSellerNameStrQuery, document).TextContent;
+
+                var planeSellerPhoneStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                $"div[class=\"fa_right_panel \"] > div[class=\"contact_slide\"] > span";
+
+                seller.Phone = GetSingleData(planeSellerPhoneStrQuery, document).TextContent;
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Seller Name: " + seller.Name + "\tSeller phone: " + seller.Phone);
+                Console.ResetColor();
             }
 
             return planes;
@@ -127,192 +187,14 @@ namespace Parser
             //GetLastPage - for geting last page and method GetPlaneUrlsForPages(url, startPage, lastPage) for get all plane urls
             var urls = GetPlaneUrlsForPages(url, 1, 2);
 
+            Console.WriteLine("For getting data press <ENTER>");
             Console.ReadLine();
 
             GetPlanesInfo(urls);
 
-            Console.ReadLine();
-
-            Console.WriteLine("------------------------------------------------------");
-            List<Plane> planes = new List<Plane>();
-            
-            foreach(var el in urls)
-            {
-                var stream = GetPage(el).ReadToEnd();
-                var Parser = new HtmlParser();
-                var document = Parser.ParseDocument(stream);
-
-                Plane plane = new Plane();
-
-                string planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                    $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > h1";
-
-                var planeNameQuery = document.QuerySelector(planeStrQuery);
-
-                if (planeNameQuery == null)
-                {
-                    planeStrQuery = planeStrQuery.Replace("fa_right_panel ", "fa_right_panel new_vif");
-                    planeNameQuery = document.QuerySelector(planeStrQuery);
-                }               
-
-                if(planeNameQuery == null)
-                    ShowError("Uncatched error! Can`t get column \"right panel\"");
-                    
-                plane.Name = planeNameQuery.TextContent;
-                Console.WriteLine("Plane name - " + plane.Name);
-
-                planeStrQuery = planeStrQuery.Replace("h1", "div[class=\"vif_price\"]");
-                var planePriceQuery = document.QuerySelector(planeStrQuery);
-
-                if (planePriceQuery == null)
-                {
-                    planeStrQuery = planeStrQuery.Replace("vif_price", "new_price");
-                    planePriceQuery = document.QuerySelector(planeStrQuery);
-                }
-
-                if (planePriceQuery == null)
-                    ShowError("Uncatched error! Can`t get column \"right panel\"");
-
-                plane.Price = GetPrice(planePriceQuery.TextContent);
-                plane.Currency = GetCurrency(planePriceQuery.TextContent);
-                Console.WriteLine("Plane price - " + plane.Price + ' ' + plane.Currency);
-
-                planeStrQuery = planeStrQuery.Remove(planeStrQuery.Length - 24, 24);
-                planeStrQuery = planeStrQuery + " > ul[class=\"mp0\"] > li[class=\"clearfix\"]";
-
-                //var mainInfo = document.QuerySelectorAll(planeStrQuery).ToList();
-                //foreach(var mi in mainInfo)
-                //{
-                //    var liName = mi.QuerySelector("div[class=\"col_30\"]").TextContent;
-                //    string value = "div[class=\"col_63\"]";
-
-                //    if (liName == "YEAR")
-                //        //Fucking symbol "‐", copy from debug window, becouse it isn`t equals "-" O_o (i think, diggerent encoding)
-                //        plane.Year = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent;
-                //    if (liName == "LOCATION")
-                //    {
-                //        var a = mi.QuerySelector(value).TextContent;
-                //        plane.Location = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent.Trim(' ', '\n', '\t');
-                //        var b = plane.Location;
-                //    }
-                //    if (liName == "S/N")
-                //        plane.SerialNumber = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent;
-                //    if (liName == "REG")
-                //        plane.Redistration = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent;
-                //    if (liName == "TTAF")
-                //        plane.TotlaTimeAirFrame = mi.QuerySelector(value).TextContent.Equals("‐") ? "no information" : mi.QuerySelector(value).TextContent;
-                //}
-
-                //Console.WriteLine($"\tYear: " + plane.Year + "\n\tLocation: " + plane.Location + "\n\tS/N: " + plane.SerialNumber +
-                //    "\n\tREG: " + plane.Redistration + "\n\tTTAF: " + plane.TotlaTimeAirFrame);
-
-                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[class=\"clearfix\"] > " +
-                    $"div[class=\"product_info_col1\"] > div[class=\"disc\"] > p";
-
-                var planeDiscriptionQuery = document.QuerySelectorAll(planeStrQuery).ToList();
-
-                if(planeDiscriptionQuery.Count() == 0)
-                {
-                    planeStrQuery = planeStrQuery.Replace("fa_left_panel ", "fa_left_panel new_vif");
-                    planeDiscriptionQuery = document.QuerySelectorAll(planeStrQuery).ToList();
-                }
-
-                if (planeDiscriptionQuery.Count() == 0)
-                    ShowError("Uncatched error! Can`t get discription");
-
-                foreach(var pdq in planeDiscriptionQuery)
-                {
-                    //for (int i = 0; i < pdq.TextContent.Length; i++)
-                    //{
-                    //    if (i != pdq.TextContent.Length && pdq.TextContent[i] == '"' && pdq.TextContent[i + 1] == '"')
-                    //        plane.Discription += pdq.TextContent[i] + '\n';
-                    //    else
-                    //        plane.Discription += pdq.TextContent[i];
-                    //}
-                    //if(planeDiscriptionQuery.Count() < 2)
-                    //{
-                    //    var findBr = pdq.QuerySelectorAll("br").ToList();
-                    //    foreach(var b in findBr)
-                    //    {
-                    //        var t = b.TagName;
-                    //    }
-                    //}
-                    //var b = pdq.TagName;
-                    plane.Discription += pdq.TextContent.Trim(' ', '\t') + '\n';
-                }
-
-                Console.WriteLine("Discription: " + plane.Discription);
-
-                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
-                    $"div[class=\"panel_default\"]";
-
-                var planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
-
-                if (planeSpecificationsQuery.Count() == 0)
-                {
-                    planeStrQuery = planeStrQuery.Replace("fa_left_panel ", "fa_left_panel new_vif");
-                    planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
-                }
-
-                plane.specifications = new List<Specification>();
-                foreach(var psq in planeSpecificationsQuery)
-                {
-
-                    var planeSpeclTitleQuery = psq.QuerySelector("> div[class=\"panel_title\"] > h4 > a");
-                    Specification specification = new Specification();                    
-                    specification.Title = planeSpeclTitleQuery.TextContent;
-
-                    var planeSpecValueQuery = psq.QuerySelector(" > div[class=\"panel_contain\"]");
-                    specification.Value = planeSpecValueQuery.TextContent.Trim(' ', '\n', '\t');
-
-                    plane.specifications.Add(specification);
-                    Console.WriteLine("Specification: " + specification.Title + "\nValue: " + specification.Value);                    
-                }
-
-                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                    $"div[class=\"fa_right_panel \"] > div[class=\"seller_info\"] > div[class=\"seller_name\"]";
-
-                var planeSellerNameQuery = document.QuerySelector(planeStrQuery);
-
-                if (planeSellerNameQuery == null)
-                    ShowError("This plane order hasn`t seller contscts");
-
-                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                $"div[class=\"fa_right_panel \"] > div[class=\"contact_slide\"] > span";
-
-                var planeSellerPhoneQuery = document.QuerySelector(planeStrQuery);
-
-                if (planeSellerPhoneQuery == null)
-                    ShowError("Can`t get seller phone");
-
-                Seller seller = new Seller();
-                seller.Name = planeSellerNameQuery.TextContent;
-                seller.Phone = planeSellerPhoneQuery.TextContent;
-                Console.WriteLine("Seller Name: " + seller.Name + "\tSeller phone: " + seller.Phone);
-
-                //Getting photos
-                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[class=\"owl-carousel owl-loaded owl-drag\"] > " +
-                   $"div[class=\"owl-stage-outer\"] > div[class=\"owl-stage\"] > div[class=\"owl-item active\"] > div[class=\"item\"] > a";
-
-                var fileExtensions = new string[] { ".jpg", ".png" };
-
-                var planePhotosQuery = document.QuerySelectorAll(planeStrQuery).ToList();
-
-                var result = from element in planePhotosQuery
-                             from attribute in element.Attributes
-                             where fileExtensions.Any(e => attribute.Value.EndsWith(e))
-                             select attribute;
-
-                foreach (var item in result)
-                {
-                    Console.WriteLine(item.Value);
-                }
-
-            }
-
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Process finished success!");
+            Console.ResetColor();
             Console.ReadLine();
         }
 
