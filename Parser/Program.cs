@@ -26,30 +26,56 @@ namespace Parser
             return document;
         }
 
+        static int GetLastPage(IHtmlDocument document)
+        {
+            var lastPageQueryStr = $"body > section > div[class=\"container\"] > div[class=\"clearfix common_wrapper\"] > div[class=\"list_right_panel\"] >" +
+                $" div[class=\"pagination\"] > div[id=\"paging\"] > div[class=\"pager\"] > span[class=\"paging_link\"] > a[class=\"page_num last\"]";
+            var lastPageQuery = document.QuerySelector(lastPageQueryStr);
+
+            int lastPage;
+            bool isNumber = Int32.TryParse(lastPageQuery.TextContent, out lastPage);
+            if (!isNumber)
+                lastPage = 1;
+
+            return lastPage;            
+        }
+
+        static List<string> GetPlaneUrlsForPages(string url, int pageStart = 1, int pageEnd = 1)
+        {
+            List<string> urls = new List<string>();
+            for (int i = pageStart; i <= pageEnd; i++)
+            {
+                string currentUrl = url + "?page=" + i;
+                var output = GetPage(currentUrl).ReadToEnd();
+                var domParser = new HtmlParser();
+                var document = domParser.ParseDocument(output);
+
+                Console.WriteLine("Urls for page #" + i);
+
+                var listAllAirplanes = document.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("listing")).ToList();
+
+                foreach (var l in listAllAirplanes)
+                {
+                    var listAirplanesUrls = l.QuerySelectorAll($"div[class=\"list_col2\"] > div[class=\"clearfix\"] > div[class=\"share_link\"] > " +
+                                                $"a[class=\"btn_more\"]");
+                    foreach (var tl in listAirplanesUrls)
+                    {
+                        urls.Add("https://www.avbuyer.com" + tl.GetAttribute("href"));
+                        Console.WriteLine(tl.GetAttribute("href"));
+                    }
+                }
+                //Console.WriteLine("Last page - " + GetLastPage(document));
+            }
+            return urls;
+        }
+
         static void Main(string[] args)
         {
-
             var url = "https://www.avbuyer.com/aircraft";
-            var output = GetPage(url).ReadToEnd();
-            var domParser = new HtmlParser();
-            var newDocument = domParser.ParseDocument(output);
+            //GetLastPage - for geting last page and method GetPlaneUrlsForPages(url, startPage, lastPage) for get all plane urls
+            var urls = GetPlaneUrlsForPages(url, 1, 2);
 
-            var listAllAirplanes = newDocument.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("listing")).ToList();
-            List<string> urls = new List<string>();
-
-            var listTest = newDocument.QuerySelector("body > div[class=\"cookies_content clearfix cookie_tab hide\"] > div[class=\"container\"] > div[class=\"fl cookies_text\"]");
-            Console.WriteLine(listTest.TextContent);
-
-            foreach (var l in listAllAirplanes)
-            {
-                var listAirplanesUrls = l.QuerySelectorAll($"div[class=\"list_col2\"] > div[class=\"clearfix\"] > div[class=\"share_link\"] > " +
-                                            $"a[class=\"btn_more\"]");
-                foreach(var tl in listAirplanesUrls)
-                {
-                    urls.Add("https://www.avbuyer.com" + tl.GetAttribute("href"));
-                    Console.WriteLine(tl.GetAttribute("href"));
-                }
-            }
+            Console.ReadLine();
 
             Console.WriteLine("------------------------------------------------------");
             List<Plane> planes = new List<Plane>();
@@ -165,18 +191,6 @@ namespace Parser
 
                 Console.WriteLine("Discription: " + plane.Discription);
 
-                //planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                //    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
-                //    $"div[class=\"panel_default\"] > div[class=\"panel_title\"] > h4 > a";
-
-                //var planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
-
-                //if (planeSpecificationsQuery.Count() == 0)
-                //{
-                //    planeStrQuery = planeStrQuery.Replace("fa_left_panel ", "fa_left_panel new_vif");
-                //    planeSpecificationsQuery = document.QuerySelectorAll(planeStrQuery).ToList();
-                //}
-
                 planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
                     $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
                     $"div[class=\"panel_default\"]";
@@ -199,19 +213,6 @@ namespace Parser
 
                     var planeSpecValueQuery = psq.QuerySelector(" > div[class=\"panel_contain\"]");
                     specification.Value = planeSpecValueQuery.TextContent.Trim(' ', '\n', '\t');
-
-                    //specification.specificationSeeds = new List<SpecificationSeed>();
-                    //foreach(var pstavq in planeSpecTitleAndValueQuery)
-                    //{
-                    //    SpecificationSeed specificationSeed = new SpecificationSeed();
-                    //    //var planeSpecTitleQuery = pstavq.QuerySelector("h3");
-                    //    //specificationSeed.Title = planeSpecTitleQuery.TextContent;
-                    //    specificationSeed.Value = pstavq.TextContent;                        
-
-                    //    specification.specificationSeeds.Add(specificationSeed);
-                    //    Console.WriteLine("\tSpecification Seed: " + specificationSeed.Value);
-                    //    //Console.WriteLine("Specification Seed Title: " + specificationSeed.Title + "\tValue: " + specificationSeed.Value);
-                    //}
 
                     plane.specifications.Add(specification);
                     Console.WriteLine("Specification: " + specification.Title + "\nValue: " + specification.Value);                    
@@ -237,6 +238,25 @@ namespace Parser
                 seller.Name = planeSellerNameQuery.TextContent;
                 seller.Phone = planeSellerPhoneQuery.TextContent;
                 Console.WriteLine("Seller Name: " + seller.Name + "\tSeller phone: " + seller.Phone);
+
+                //Getting photos
+                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[class=\"owl-carousel owl-loaded owl-drag\"] > " +
+                   $"div[class=\"owl-stage-outer\"] > div[class=\"owl-stage\"] > div[class=\"owl-item active\"] > div[class=\"item\"] > a";
+
+                var fileExtensions = new string[] { ".jpg", ".png" };
+
+                var planePhotosQuery = document.QuerySelectorAll(planeStrQuery).ToList();
+
+                var result = from element in planePhotosQuery
+                             from attribute in element.Attributes
+                             where fileExtensions.Any(e => attribute.Value.EndsWith(e))
+                             select attribute;
+
+                foreach (var item in result)
+                {
+                    Console.WriteLine(item.Value);
+                }
 
             }
 
