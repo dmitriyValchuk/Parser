@@ -18,11 +18,19 @@ namespace Parser
     class Program
     {
         static StreamReader GetPage(string url)
-        {
-            
+        {            
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
             StreamReader document = new StreamReader(response.GetResponseStream());
+            return document;
+        }
+
+        static IHtmlDocument GetDocument(string url)
+        {
+            var output = GetPage(url).ReadToEnd();
+            var domParser = new HtmlParser();
+            var document = domParser.ParseDocument(output);
+
             return document;
         }
 
@@ -46,9 +54,11 @@ namespace Parser
             for (int i = pageStart; i <= pageEnd; i++)
             {
                 string currentUrl = url + "?page=" + i;
-                var output = GetPage(currentUrl).ReadToEnd();
-                var domParser = new HtmlParser();
-                var document = domParser.ParseDocument(output);
+
+                var document = GetDocument(currentUrl);
+                //var output = GetPage(currentUrl).ReadToEnd();
+                //var domParser = new HtmlParser();
+                //var document = domParser.ParseDocument(output);
 
                 Console.WriteLine("Urls for page #" + i);
 
@@ -61,12 +71,54 @@ namespace Parser
                     foreach (var tl in listAirplanesUrls)
                     {
                         urls.Add("https://www.avbuyer.com" + tl.GetAttribute("href"));
-                        Console.WriteLine(tl.GetAttribute("href"));
+                        Console.WriteLine("https://www.avbuyer.com" + tl.GetAttribute("href"));
                     }
                 }
                 //Console.WriteLine("Last page - " + GetLastPage(document));
             }
             return urls;
+        }
+
+        static IElement GetSingleData(string queryStr, IHtmlDocument document)
+        {
+            var query = document.QuerySelector(queryStr);
+
+            if (query == null)
+            {
+                queryStr = queryStr.Replace("fa_right_panel ", "fa_right_panel new_vif");
+                query = document.QuerySelector(queryStr);
+            }
+
+            if (query == null)
+                ShowError("Uncatched error! Can`t get column \"right panel\"");
+
+            return query;
+        }
+
+        static List<Plane> GetPlanesInfo(List<string> urls)
+        {
+            List<Plane> planes = new List<Plane>();
+            foreach (var url in urls)
+            {
+                var document = GetDocument(url);
+                Plane plane = new Plane();
+
+                string planeNameStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > h1";
+
+                plane.Name = GetSingleData(planeNameStrQuery, document).TextContent;
+                Console.WriteLine("Plane name - " + plane.Name);
+
+                string planePriceStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > div[class=\"vif_price\"]";
+
+                plane.Price = GetPrice(GetSingleData(planePriceStrQuery, document).TextContent);
+                plane.Currency = GetCurrency(GetSingleData(planePriceStrQuery, document).TextContent);
+                Console.WriteLine("Plane price - " + plane.Price + ' ' + plane.Currency);
+
+            }
+
+            return planes;
         }
 
         static void Main(string[] args)
@@ -77,17 +129,18 @@ namespace Parser
 
             Console.ReadLine();
 
+            GetPlanesInfo(urls);
+
+            Console.ReadLine();
+
             Console.WriteLine("------------------------------------------------------");
             List<Plane> planes = new List<Plane>();
             
             foreach(var el in urls)
             {
                 var stream = GetPage(el).ReadToEnd();
-                //var config = 
                 var Parser = new HtmlParser();
                 var document = Parser.ParseDocument(stream);
-
-                var list2 = document.QuerySelectorAll("div").Where(item => item.ClassName != null && item.ClassName.Contains("clearfix vif_wrapper")).ToList();
 
                 Plane plane = new Plane();
 
