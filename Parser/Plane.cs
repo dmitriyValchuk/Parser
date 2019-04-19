@@ -14,7 +14,7 @@ namespace Parser
         public string Year { get; set; }
         public string Location { get; set; }
         public string SerialNumber { get; set; }
-        public string Redistration { get; set; }
+        public string Registration { get; set; }
         public string TotlaTimeAirFrame { get; set; }
 
         public string Discription { get; set; }

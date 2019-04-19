@@ -176,6 +176,78 @@ namespace Parser
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("Seller Name: " + seller.Name + "\tSeller phone: " + seller.Phone);
                 Console.ResetColor();
+
+                //Block for some info
+                string planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > h1";
+
+                var planeNameQuery = document.QuerySelector(planeStrQuery);
+
+                if (planeNameQuery == null)
+                {
+                    planeStrQuery = planeStrQuery.Replace("fa_right_panel ", "fa_right_panel new_vif");
+                    planeNameQuery = document.QuerySelector(planeStrQuery);
+                }
+
+                if (planeNameQuery == null)
+                    Console.WriteLine("Uncatched error! Can`t get column \"right panel\"");
+
+                plane.Name = planeNameQuery.TextContent;
+                Console.WriteLine("Plane name - " + plane.Name);
+
+                planeStrQuery = planeStrQuery.Replace("h1", "div[class=\"vif_price\"]");
+                var planePriceQuery = document.QuerySelector(planeStrQuery);
+
+                if (planePriceQuery == null)
+                {
+                    planeStrQuery = planeStrQuery.Replace("vif_price", "new_price");
+                    planePriceQuery = document.QuerySelector(planeStrQuery);
+                }
+
+                if (planePriceQuery == null)
+                    Console.WriteLine("Uncatched error! Can`t get column \"right panel\"");
+
+                plane.Price = GetPrice(planePriceQuery.TextContent);
+                plane.Currency = GetCurrency(planePriceQuery.TextContent);
+                Console.WriteLine("Plane price - " + plane.Price + ' ' + plane.Currency);
+
+                planeStrQuery = planeStrQuery.Remove(planeStrQuery.Length - 24, 24);
+                planeStrQuery = planeStrQuery + " > ul[class=\"mp0\"] > li[class=\"clearfix\"]";
+
+                string planeMainPoitsStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                   $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > ul[class=\"mp0\"] > li[class=\"clearfix\"]";
+
+                Plane planeMainInfo = GetMainInfo(GetMultiData(planeMainPoitsStrQuery, document));
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                plane.Year = planeMainInfo.Year;
+                plane.Location = planeMainInfo.Location;
+                plane.SerialNumber = planeMainInfo.SerialNumber;
+                plane.Registration = planeMainInfo.Registration;
+                plane.TotlaTimeAirFrame = planeMainInfo.TotlaTimeAirFrame;
+                Console.WriteLine($"Year: " + plane.Year + "\nLocation: " + plane.Location + "\nS/N: " + plane.SerialNumber 
+                    + "\nRegistration: " + plane.Registration + "\nTTAF: " + plane.TotlaTimeAirFrame);
+                Console.ResetColor();
+                
+
+                //Getting photos
+                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[class=\"owl-carousel owl-loaded owl-drag\"] > " +
+                   $"div[class=\"owl-stage-outer\"] > div[class=\"owl-stage\"] > div[class=\"owl-item active\"] > div[class=\"item\"] > a";
+
+                var fileExtensions = new string[] { ".jpg", ".png" };
+
+                var planePhotosQuery = document.QuerySelectorAll(planeStrQuery).ToList();
+
+                var result = from element in planePhotosQuery
+                             from attribute in element.Attributes
+                             where fileExtensions.Any(e => attribute.Value.EndsWith(e))
+                             select attribute;
+
+                foreach (var item in result)
+                {
+                    Console.WriteLine(item.Value);
+                }
             }
 
             return planes;
@@ -196,6 +268,33 @@ namespace Parser
             Console.WriteLine("Process finished success!");
             Console.ResetColor();
             Console.ReadLine();
+        }
+
+        static public Plane GetMainInfo(List<IElement> elements)
+        {
+            Plane plane = new Plane();
+            foreach (var e in elements)
+            {
+                var liName = e.QuerySelector("div[class=\"col_30\"]").TextContent;
+                string value = "div[class=\"col_63\"]";
+
+                if (liName == "YEAR")
+                    //Fucking symbol "‐", copy from debug window, becouse it isn`t equals "-" O_o (i think, diggerent encoding)
+                    plane.Year = e.QuerySelector(value).TextContent.Equals("‐") ? "no information" : e.QuerySelector(value).TextContent;
+                if (liName == "LOCATION")
+                {
+                    var a = e.QuerySelector(value).TextContent;
+                    plane.Location = e.QuerySelector(value).TextContent.Equals("‐") ? "no information" : e.QuerySelector(value).TextContent.Trim(' ', '\n', '\t');
+                    var b = plane.Location;
+                }
+                if (liName == "S/N")
+                    plane.SerialNumber = e.QuerySelector(value).TextContent.Equals("‐") ? "no information" : e.QuerySelector(value).TextContent;
+                if (liName == "REG")
+                    plane.Registration = e.QuerySelector(value).TextContent.Equals("‐") ? "no information" : e.QuerySelector(value).TextContent;
+                if (liName == "TTAF")
+                    plane.TotlaTimeAirFrame = e.QuerySelector(value).TextContent.Equals("‐") ? "no information" : e.QuerySelector(value).TextContent;
+            }
+            return plane;
         }
 
         static public void ShowError(string err)
