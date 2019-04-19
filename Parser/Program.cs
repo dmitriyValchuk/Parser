@@ -159,7 +159,9 @@ namespace Parser
                     specification.Value = GetSingleData(planeSpecificationValueStrQuery, document).TextContent.Trim(' ', '\n', '\t');
 
                     plane.specifications.Add(specification);
+                    Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.WriteLine("Specification: " + specification.Title + "\nValue: " + specification.Value);
+                    Console.ResetColor();
                 }
 
                 Seller seller = new Seller();
@@ -178,75 +180,46 @@ namespace Parser
                 Console.ResetColor();
 
                 //Block for some info
-                string planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                    $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > h1";
-
-                var planeNameQuery = document.QuerySelector(planeStrQuery);
-
-                if (planeNameQuery == null)
-                {
-                    planeStrQuery = planeStrQuery.Replace("fa_right_panel ", "fa_right_panel new_vif");
-                    planeNameQuery = document.QuerySelector(planeStrQuery);
-                }
-
-                if (planeNameQuery == null)
-                    Console.WriteLine("Uncatched error! Can`t get column \"right panel\"");
-
-                plane.Name = planeNameQuery.TextContent;
-                Console.WriteLine("Plane name - " + plane.Name);
-
-                planeStrQuery = planeStrQuery.Replace("h1", "div[class=\"vif_price\"]");
-                var planePriceQuery = document.QuerySelector(planeStrQuery);
-
-                if (planePriceQuery == null)
-                {
-                    planeStrQuery = planeStrQuery.Replace("vif_price", "new_price");
-                    planePriceQuery = document.QuerySelector(planeStrQuery);
-                }
-
-                if (planePriceQuery == null)
-                    Console.WriteLine("Uncatched error! Can`t get column \"right panel\"");
-
-                plane.Price = GetPrice(planePriceQuery.TextContent);
-                plane.Currency = GetCurrency(planePriceQuery.TextContent);
-                Console.WriteLine("Plane price - " + plane.Price + ' ' + plane.Currency);
-
-                planeStrQuery = planeStrQuery.Remove(planeStrQuery.Length - 24, 24);
-                planeStrQuery = planeStrQuery + " > ul[class=\"mp0\"] > li[class=\"clearfix\"]";
-
                 string planeMainPoitsStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
                    $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > ul[class=\"mp0\"] > li[class=\"clearfix\"]";
 
                 Plane planeMainInfo = GetMainInfo(GetMultiData(planeMainPoitsStrQuery, document));
 
-                Console.ForegroundColor = ConsoleColor.Yellow;
                 plane.Year = planeMainInfo.Year;
                 plane.Location = planeMainInfo.Location;
                 plane.SerialNumber = planeMainInfo.SerialNumber;
                 plane.Registration = planeMainInfo.Registration;
                 plane.TotlaTimeAirFrame = planeMainInfo.TotlaTimeAirFrame;
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
                 Console.WriteLine($"Year: " + plane.Year + "\nLocation: " + plane.Location + "\nS/N: " + plane.SerialNumber 
-                    + "\nRegistration: " + plane.Registration + "\nTTAF: " + plane.TotlaTimeAirFrame);
+                    + "\nRegistration: " + plane.Registration + "\nTTAF: " + plane.TotlaTimeAirFrame + "\n\n\n");
                 Console.ResetColor();
-                
 
                 //Getting photos
-                planeStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[class=\"owl-carousel owl-loaded owl-drag\"] > " +
-                   $"div[class=\"owl-stage-outer\"] > div[class=\"owl-stage\"] > div[class=\"owl-item active\"] > div[class=\"item\"] > a";
+                //var planePhotoStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                //   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[id=\"ad-image-carousel\"]";
 
-                var fileExtensions = new string[] { ".jpg", ".png" };
+                //var photo = GetSingleData(planePhotoStrQuery, document).FirstElementChild;
+                //var photoForTest = GetSingleData(planePhotoStrQuery, document);
 
-                var planePhotosQuery = document.QuerySelectorAll(planeStrQuery).ToList();
+                //var photoForTest2 = document.QuerySelectorAll("body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                //   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[id=\"ad-image-carousel\"] > div[class=\"owl-stage-outer\"] > " +
+                //   $"div[class=\"owl-stage\"] > div[class=\"owl-item cloned\"] > div[class=\"item\"] > a[class=\"fancybox\"]");//.Where(c => c.ClassName.Contains("owl-item")).ToList();
+                //foreach(var e in photoForTest2)
+                //{
+                //    Console.WriteLine($"div tag name: {e.TagName}");
+                //}
 
-                var result = from element in planePhotosQuery
-                             from attribute in element.Attributes
-                             where fileExtensions.Any(e => attribute.Value.EndsWith(e))
-                             select attribute;
+                var testPhotos3 = document.QuerySelectorAll($"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[id=\"ad-image-carousel\"]").ToList();
 
-                foreach (var item in result)
+                foreach (var tp3 in testPhotos3)
                 {
-                    Console.WriteLine(item.Value);
+                    var abc = tp3.QuerySelectorAll<IHtmlImageElement>($"img").Select(img => img.Source).ToList();
+                    foreach (var a in abc)
+                    {
+                        Console.WriteLine("IMG SRC: " + a);
+                    }
                 }
             }
 
