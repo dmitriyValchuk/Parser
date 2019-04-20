@@ -18,8 +18,9 @@ namespace Parser
         public string TotlaTimeAirFrame { get; set; }
 
         public string Discription { get; set; }
-        public List<Specification> specifications { get; set; }
+        public List<Specification> Specifications { get; set; }
 
         public Seller Seller { get; set; }
+        public List<Photo> Photos { get; set; }
     }
 }

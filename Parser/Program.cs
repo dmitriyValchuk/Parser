@@ -9,6 +9,8 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Drawing;
+
 
 namespace Parser
 {
@@ -142,7 +144,7 @@ namespace Parser
 
                 var specificationsList = GetMultiData(planeSpecificationStrQuery, document);
 
-                plane.specifications = new List<Specification>();
+                plane.Specifications = new List<Specification>();
                 foreach (var sl in specificationsList)
                 {
                     Specification specification = new Specification();
@@ -158,7 +160,7 @@ namespace Parser
 
                     specification.Value = GetSingleData(planeSpecificationValueStrQuery, document).TextContent.Trim(' ', '\n', '\t');
 
-                    plane.specifications.Add(specification);
+                    plane.Specifications.Add(specification);
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.WriteLine("Specification: " + specification.Title + "\nValue: " + specification.Value);
                     Console.ResetColor();
@@ -179,6 +181,8 @@ namespace Parser
                 Console.WriteLine("Seller Name: " + seller.Name + "\tSeller phone: " + seller.Phone);
                 Console.ResetColor();
 
+                plane.Seller = seller;
+
                 //Block for some info
                 string planeMainPoitsStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
                    $"div[class=\"fa_right_panel \"] > div[class=\"vif_other_info\"] > ul[class=\"mp0\"] > li[class=\"clearfix\"]";
@@ -196,34 +200,88 @@ namespace Parser
                 Console.ResetColor();
 
                 //Getting photos
-                //var planePhotoStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                //   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[id=\"ad-image-carousel\"]";
+                var planePhotosStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
+                    $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[id=\"ad-image-carousel\"]";
+                var listBlockWithImg = GetMultiData(planePhotosStrQuery, document);
 
-                //var photo = GetSingleData(planePhotoStrQuery, document).FirstElementChild;
-                //var photoForTest = GetSingleData(planePhotoStrQuery, document);
+                List<string> photosUrl = new List<string>();
 
-                //var photoForTest2 = document.QuerySelectorAll("body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                //   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[id=\"ad-image-carousel\"] > div[class=\"owl-stage-outer\"] > " +
-                //   $"div[class=\"owl-stage\"] > div[class=\"owl-item cloned\"] > div[class=\"item\"] > a[class=\"fancybox\"]");//.Where(c => c.ClassName.Contains("owl-item")).ToList();
-                //foreach(var e in photoForTest2)
-                //{
-                //    Console.WriteLine($"div tag name: {e.TagName}");
-                //}
-
-                var testPhotos3 = document.QuerySelectorAll($"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                   $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[id=\"ad-image-carousel\"]").ToList();
-
-                foreach (var tp3 in testPhotos3)
+                foreach (var ppsq in listBlockWithImg)
                 {
-                    var abc = tp3.QuerySelectorAll<IHtmlImageElement>($"img").Select(img => img.Source).ToList();
-                    foreach (var a in abc)
+                    var imgSrc = ppsq.QuerySelectorAll<IHtmlImageElement>($"img").Select(img => img.Source).ToList();
+                    foreach (var i_s in imgSrc)
                     {
-                        Console.WriteLine("IMG SRC: " + a);
+                        photosUrl.Add(i_s);
+                        Console.WriteLine("IMG SRC: " + i_s);
                     }
                 }
+
+                plane.Photos = GetPhotosByteArraysFromUrl(photosUrl);
+
+                //foreach(var p in plane.Photos)
+                //{
+                //    Console.WriteLine("\nSource: " + p.Source + "\n");
+                //    //foreach (var i in p.Image)
+                //    //{
+                //    //    Console.Write(i + " ");
+                //    //}
+                //}
+                
+                //When web project will be finished, replace imgPath! And database structure must be:
+                //1. Plane table
+                    //id
+                    //other info
+                //2. Img table
+                    //id
+                    //source
+                    //byteArr or imgPath
+                //3. ImagesToPlane table
+                    //id
+                    //id_plane
+                    //id_img
+                string imgPath = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Environment.CurrentDirectory)));
+                string currentFolderName = plane.Name.Replace('/', '-');
+                imgPath += "\\Images\\" + currentFolderName + "_" + plane.Seller.Name + "\\";
+                Directory.CreateDirectory(imgPath);
+
+                foreach(var p in plane.Photos)
+                {
+                    Console.WriteLine("Photo size: " + GetImageFromByteArr(p.Image).Size.ToString());
+                    int indexOfBeginMainName = p.Source.LastIndexOf('/');
+                    string currentFileName = p.Source.Remove(0, indexOfBeginMainName);
+                    string finalPath = imgPath + currentFileName + ".jpg";
+                    File.WriteAllBytes(finalPath, p.Image);
+                }
+                
+                Console.ReadLine();
             }
 
             return planes;
+        }
+
+        static List<Photo> GetPhotosByteArraysFromUrl(List<string> photosUrl)
+        {
+            List<Photo> photos = new List<Photo>();
+            foreach (var pu in photosUrl)
+            {
+                Photo photo = new Photo();
+                photo.Source = pu;
+                using (var webClient = new WebClient())
+                {
+                    photo.Image = webClient.DownloadData(pu);
+                }
+
+                photos.Add(photo);
+            }
+            return photos;
+        }
+
+        static Image GetImageFromByteArr(byte[] photoArr)
+        {
+            using (var img = new MemoryStream(photoArr))
+            {
+                return Image.FromStream(img);
+            }
         }
 
         static void Main(string[] args)
