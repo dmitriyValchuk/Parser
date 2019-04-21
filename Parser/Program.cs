@@ -91,6 +91,22 @@ namespace Parser
             return query;
         }
 
+        static IElement GetSingleData(string queryStr, IElement element)
+        {
+            var query = element.QuerySelector(queryStr);
+
+            if (query == null)
+            {
+                queryStr = queryStr.Replace("fa_right_panel ", "fa_right_panel new_vif");
+                query = element.QuerySelector(queryStr);
+            }
+
+            if (query == null)
+                ShowError("Uncatched error! Can`t get data");
+
+            return query;
+        }
+
         static List<IElement> GetMultiData(string queryStr, IHtmlDocument document)
         {
             var query = document.QuerySelectorAll(queryStr).ToList();
@@ -134,6 +150,9 @@ namespace Parser
 
                 var discriptionList = GetMultiData(planeDiscriptionStrQuery, document);
 
+                //var a = document.QuerySelector(planeDiscriptionStrQuery).InnerHtml;
+                //Console.WriteLine(a);
+
                 foreach (var dl in discriptionList)
                     plane.Discription += dl.TextContent.Trim(' ', '\t') + '\n';
                 Console.WriteLine("Discription: " + plane.Discription);
@@ -148,17 +167,11 @@ namespace Parser
                 foreach (var sl in specificationsList)
                 {
                     Specification specification = new Specification();
-                    var planeSpcificationTitleStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
-                    $"div[class=\"panel_default\"] > div[class=\"panel_title\"] > h4 > a";
-                  
-                    specification.Title = GetSingleData(planeSpcificationTitleStrQuery, document).TextContent;
+                    var planeSpcificationTitleStrQuery = "div[class=\"panel_title\"] > h4 > a";
+                    specification.Title = GetSingleData(planeSpcificationTitleStrQuery, sl).TextContent;
 
-                    var planeSpecificationValueStrQuery = $"body > section > div[class=\"container\"] > div[class=\"clearfix vif_wrapper\"] > " +
-                    $"div[class=\"fa_left_panel \"] > div[class=\"aircraft_detail\"] > div[id=\"accordion\"] > " +
-                    $"div[class=\"panel_default\"] > div[class=\"panel_contain\"]";
-
-                    specification.Value = GetSingleData(planeSpecificationValueStrQuery, document).TextContent.Trim(' ', '\n', '\t');
+                    var planeSpecificationValueStrQuery = "div[class=\"panel_contain\"]";
+                    specification.Value = GetSingleData(planeSpecificationValueStrQuery, sl).TextContent.Trim(' ', '\n', '\t');
 
                     plane.Specifications.Add(specification);
                     Console.ForegroundColor = ConsoleColor.Yellow;
@@ -204,6 +217,8 @@ namespace Parser
                     $"div[class=\"fa_left_panel \"] > div[class=\"vif_carousel owl-theme\"] > div[id=\"ad-image-carousel\"]";
                 var listBlockWithImg = GetMultiData(planePhotosStrQuery, document);
 
+                //var a = document.QuerySelector("div").InnerHtml;
+
                 List<string> photosUrl = new List<string>();
 
                 foreach (var ppsq in listBlockWithImg)
@@ -218,40 +233,42 @@ namespace Parser
 
                 plane.Photos = GetPhotosByteArraysFromUrl(photosUrl);
 
-                //foreach(var p in plane.Photos)
+                //foreach (var p in plane.Photos)
                 //{
                 //    Console.WriteLine("\nSource: " + p.Source + "\n");
-                //    //foreach (var i in p.Image)
-                //    //{
-                //    //    Console.Write(i + " ");
-                //    //}
+                //    foreach (var i in p.Image)
+                //    {
+                //        Console.Write(i + " ");
+                //    }
                 //}
-                
+
                 //When web project will be finished, replace imgPath! And database structure must be:
                 //1. Plane table
-                    //id
-                    //other info
+                //id
+                //other info
                 //2. Img table
-                    //id
-                    //source
-                    //byteArr or imgPath
+                //id
+                //source
+                //byteArr or imgPath
                 //3. ImagesToPlane table
-                    //id
-                    //id_plane
-                    //id_img
-                string imgPath = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Environment.CurrentDirectory)));
-                string currentFolderName = plane.Name.Replace('/', '-');
-                imgPath += "\\Images\\" + currentFolderName + "_" + plane.Seller.Name + "\\";
-                Directory.CreateDirectory(imgPath);
+                //id
+                //id_plane
+                //id_img
 
-                foreach(var p in plane.Photos)
-                {
-                    Console.WriteLine("Photo size: " + GetImageFromByteArr(p.Image).Size.ToString());
-                    int indexOfBeginMainName = p.Source.LastIndexOf('/');
-                    string currentFileName = p.Source.Remove(0, indexOfBeginMainName);
-                    string finalPath = imgPath + currentFileName + ".jpg";
-                    File.WriteAllBytes(finalPath, p.Image);
-                }
+                //this work good!
+                //string imgPath = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Environment.CurrentDirectory)));
+                //string currentFolderName = plane.Name.Replace('/', '-');
+                //imgPath += "\\Images\\" + currentFolderName + "_" + plane.Seller.Name + "\\";
+                //Directory.CreateDirectory(imgPath);
+
+                //foreach(var p in plane.Photos)
+                //{
+                //    //Console.WriteLine("Photo size: " + GetImageFromByteArr(p.Image).Size.ToString());
+                //    int indexOfBeginMainName = p.Source.LastIndexOf('/');
+                //    string currentFileName = p.Source.Remove(0, indexOfBeginMainName);
+                //    string finalPath = imgPath + currentFileName;
+                //    File.WriteAllBytes(finalPath, p.Image);
+                //}
                 
                 Console.ReadLine();
             }
